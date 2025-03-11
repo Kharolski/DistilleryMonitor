@@ -2,10 +2,12 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.graphics import Color, RoundedRectangle
 from kivy.metrics import dp
+from kivy.uix.behaviors import ButtonBehavior
 
-class TemperatureCard(BoxLayout):
+class TemperatureCard(ButtonBehavior, BoxLayout):
     """
     Komponent som visar temperaturinformation för en sensor.
+    Fungerar nu även som en knapp som kan klickas.
     """
     def __init__(self, name, temp, optimal_range, **kwargs):
         super(TemperatureCard, self).__init__(**kwargs)
@@ -71,5 +73,5 @@ class TemperatureCard(BoxLayout):
     def _update_bg(self, *args):
         self.bg.pos = self.pos
         self.bg.size = self.size
-
+    
 
