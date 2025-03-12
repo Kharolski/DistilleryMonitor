@@ -1,169 +1,201 @@
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.button import Button
 from kivy.metrics import dp
-from kivy_garden.graph import Graph, MeshLinePlot
-from kivy.clock import Clock
-import random
-from datetime import datetime, timedelta
+from kivy.graphics import Color, Rectangle
 
 class DetailScreen(Screen):
     """
-    Detaljskärm som visar temperaturhistorik för en sensor.
+    Skärm som visar detaljerad information om en temperaturgivare.
     """
+    
     def __init__(self, **kwargs):
         super(DetailScreen, self).__init__(**kwargs)
         
-        # Huvudlayout
-        self.layout = BoxLayout(orientation='vertical', padding=dp(15), spacing=dp(10))
+        # Initiera huvudvariabler
+        self.sensor_name = ""
+        self.temperature = 0.0
+        self.sensor_config = None
         
-        # Sensor-information
-        self.sensor_info = BoxLayout(orientation='vertical', size_hint=(1, 0.2))
-        self.sensor_name = Label(text="Sensor", font_size=dp(28), bold=True, size_hint=(1, 0.5))
-        self.current_temp = Label(text="Temperatur: 0.0°C", font_size=dp(22), size_hint=(1, 0.5))
-        self.sensor_info.add_widget(self.sensor_name)
-        self.sensor_info.add_widget(self.current_temp)
-        
-        # Graf för temperaturhistorik
-        self.graph_container = BoxLayout(orientation='vertical', size_hint=(1, 0.6))
-        self.graph = Graph(
-            xlabel='Tid', 
-            ylabel='Temp (°C)',
-            x_ticks_minor=5,
-            x_ticks_major=10,
-            y_ticks_major=5,
-            y_grid_label=True,
-            x_grid_label=True,
-            padding=dp(5),
-            x_grid=True,
-            y_grid=True,
-            xmin=0,
-            xmax=60,  # Visa 60 minuter
-            ymin=0,
-            ymax=100  # Max temperatur 100°C
+        # Skapa huvudlayout
+        main_layout = BoxLayout(
+            orientation='vertical',
+            padding=dp(20),
+            spacing=dp(10)
         )
-        self.graph_container.add_widget(self.graph)
         
-        # Statistik
-        self.stats_container = BoxLayout(orientation='horizontal', size_hint=(1, 0.1))
-        self.min_temp = Label(text="Min: 0.0°C")
-        self.max_temp = Label(text="Max: 0.0°C")
-        self.avg_temp = Label(text="Medel: 0.0°C")
-        
-        self.stats_container.add_widget(self.min_temp)
-        self.stats_container.add_widget(self.max_temp)
-        self.stats_container.add_widget(self.avg_temp)
-        
-        # Knappar
-        self.buttons_container = BoxLayout(orientation='horizontal', size_hint=(1, 0.1), spacing=dp(10))
-        self.back_button = Button(
-            text="Tillbaka", 
-            background_color=(0.3, 0.3, 0.3, 1),
-            size_hint=(0.5, 1)
+        # Skapa header med tillbakaknapp
+        header = BoxLayout(
+            orientation='horizontal',
+            size_hint=(1, 0.1),
+            spacing=dp(10)
         )
-        self.back_button.bind(on_press=self.go_back)
         
-        self.refresh_button = Button(
-            text="Uppdatera", 
-            background_color=(0.3, 0.5, 0.9, 1),
-            size_hint=(0.5, 1)
+        # Tillbakaknapp
+        back_button = Button(
+            text="Tillbaka",
+            size_hint=(0.3, 1),
+            background_normal='',
+            background_color=(0.3, 0.4, 0.5, 1)
         )
-        self.refresh_button.bind(on_press=self.refresh_graph)
+        back_button.bind(on_release=self.go_back)
+        header.add_widget(back_button)
         
-        self.buttons_container.add_widget(self.back_button)
-        self.buttons_container.add_widget(self.refresh_button)
+        # Titel för skärmen
+        self.title_label = Label(
+            text="Sensor Details",
+            font_size=dp(20),
+            bold=True,
+            size_hint=(0.7, 1)
+        )
+        header.add_widget(self.title_label)
         
-        # Lägg till alla containers till huvudlayouten
-        self.layout.add_widget(self.sensor_info)
-        self.layout.add_widget(self.graph_container)
-        self.layout.add_widget(self.stats_container)
-        self.layout.add_widget(self.buttons_container)
+        # Lägg till header till huvudlayout
+        main_layout.add_widget(header)
         
-        self.add_widget(self.layout)
+        # Innehållslayout
+        content = BoxLayout(
+            orientation='vertical',
+            spacing=dp(20),
+            size_hint=(1, 0.9)
+        )
         
-        # Data för grafen
-        self.plot = None
-        self.sensor_data = {}
-        self.temp_history = []
+        # Temperaturvisning
+        temp_box = BoxLayout(
+            orientation='vertical',
+            spacing=dp(5),
+            size_hint=(1, 0.3)
+        )
         
-        # Initialisera plotten direkt
-        self.plot = MeshLinePlot(color=[0, 1, 0, 1])
-        self.graph.add_plot(self.plot)
+        temp_header = Label(
+            text="Aktuell temperatur",
+            font_size=dp(16),
+            size_hint=(1, 0.3)
+        )
+        temp_box.add_widget(temp_header)
+        
+        self.temp_label = Label(
+            text="--°C",
+            font_size=dp(40),
+            bold=True,
+            size_hint=(1, 0.7)
+        )
+        temp_box.add_widget(self.temp_label)
+        
+        content.add_widget(temp_box)
+        
+        # Status
+        status_box = BoxLayout(
+            orientation='vertical',
+            spacing=dp(5),
+            size_hint=(1, 0.2)
+        )
+        
+        status_header = Label(
+            text="Status",
+            font_size=dp(16),
+            size_hint=(1, 0.4)
+        )
+        status_box.add_widget(status_header)
+        
+        self.status_label = Label(
+            text="--",
+            font_size=dp(24),
+            bold=True,
+            size_hint=(1, 0.6)
+        )
+        status_box.add_widget(self.status_label)
+        
+        content.add_widget(status_box)
+        
+        # Meddelande
+        message_box = BoxLayout(
+            orientation='vertical',
+            spacing=dp(5),
+            size_hint=(1, 0.2)
+        )
+        
+        self.message_label = Label(
+            text="Ingen information tillgänglig",
+            font_size=dp(16),
+            size_hint=(1, 1),
+            halign='center',
+            valign='middle'
+        )
+        # Aktivera radbrytning för meddelandet
+        self.message_label.bind(size=lambda *args: setattr(self.message_label, 'text_size', (self.message_label.width, None)))
+        
+        message_box.add_widget(self.message_label)
+        content.add_widget(message_box)
+        
+        # Optimal temperaturintervall
+        optimal_box = BoxLayout(
+            orientation='vertical',
+            spacing=dp(5),
+            size_hint=(1, 0.2)
+        )
+        
+        self.optimal_label = Label(
+            text="Optimalt intervall: --",
+            font_size=dp(16),
+            size_hint=(1, 1)
+        )
+        optimal_box.add_widget(self.optimal_label)
+        
+        content.add_widget(optimal_box)
+        
+        # Plats för framtida grafik/diagram
+        graph_placeholder = BoxLayout(
+            size_hint=(1, 0.3)
+        )
+        
+        graph_text = Label(
+            text="[Temperaturgrafer kommer här]",
+            italic=True,
+            color=(0.5, 0.5, 0.5, 1)
+        )
+        graph_placeholder.add_widget(graph_text)
+        
+        content.add_widget(graph_placeholder)
+        
+        # Lägg till innehållet till huvudlayout
+        main_layout.add_widget(content)
+        
+        # Lägg till huvudlayout till skärmen
+        self.add_widget(main_layout)
     
-    def set_sensor(self, name, temp, optimal_range):
-        """Sätt aktuell sensor och dess data"""
-        self.sensor_name.text = name
-        self.current_temp.text = f"Temperatur: {temp:.1f}°C"
+    def set_sensor(self, name, temp):
+        """
+        Sätt aktuell sensor och dess data
+        """
+        self.sensor_name = name
+        self.temperature = temp
         
-        # Spara sensordata
-        self.sensor_data = {
-            'name': name,
-            'temp': temp,
-            'optimal_min': optimal_range[0],
-            'optimal_max': optimal_range[1]
-        }
+        # Hämta sensorkonfiguration
+        from models.sensor_config import SensorConfigs
+        self.sensor_config = SensorConfigs.get_sensor_by_name(name)
         
-        # Anpassa grafens y-axel baserat på optimalt intervall
-        buffer = 20  # Lägg till lite marginal
-        self.graph.ymin = max(0, optimal_range[0] - buffer)
-        self.graph.ymax = optimal_range[1] + buffer
+        # Uppdatera UI-elementen
+        self.title_label.text = f"{name} Details"
+        self.temp_label.text = f"{temp:.1f}°C"
         
-        # Generera mock-historik för demonstrationsändamål
-        self.generate_mock_history()
+        # Sätt status och färg
+        status = self.sensor_config.get_status(temp)
+        status_color = self.sensor_config.get_status_color(temp)
+        status_message = self.sensor_config.get_status_message(temp)
         
-        # Uppdatera grafen
-        if self.plot:
-            self.update_graph()
-    
-    def generate_mock_history(self):
-        """Generera simulerad temperaturhistorik"""
-        self.temp_history = []
-        base_temp = self.sensor_data['temp']
-        optimal_min = self.sensor_data['optimal_min']
-        optimal_max = self.sensor_data['optimal_max']
+        # Uppdatera status-relaterade UI-element
+        self.status_label.text = status.upper()
+        self.status_label.color = status_color
+        self.message_label.text = status_message
         
-        # Generera 60 datapunkter (en per minut för senaste timmen)
-        for i in range(60):
-            # Simulera temperatur runt bastemperaturen
-            variation = random.uniform(-5, 5)
-            temp = base_temp + variation
-            
-            # Lägg till tidpunkt och temperatur
-            now = datetime.now() - timedelta(minutes=60-i)
-            self.temp_history.append({
-                'timestamp': now,
-                'temp': temp
-            })
-        
-        # Beräkna statistik
-        temps = [entry['temp'] for entry in self.temp_history]
-        self.min_temp.text = f"Min: {min(temps):.1f}°C"
-        self.max_temp.text = f"Max: {max(temps):.1f}°C"
-        self.avg_temp.text = f"Medel: {sum(temps)/len(temps):.1f}°C"
-    
-    def update_graph(self):
-        """Uppdatera grafen med historikdata"""
-        if not self.temp_history:
-            return
-        
-        try:
-            # Skapa datapunkter för grafen
-            points = [(i, entry['temp']) for i, entry in enumerate(self.temp_history)]
-            self.plot.points = points
-        except Exception as e:
-            # Behåll en enkel felhantering för att fånga allvarliga problem
-            print(f"Error updating graph: {e}")
-    
-    def refresh_graph(self, instance):
-        """Uppdatera grafen med ny data (för testning)"""
-        self.generate_mock_history()
-        self.update_graph()
+        # Uppdatera optimal range
+        self.optimal_label.text = f"Optimalt intervall: {self.sensor_config.optimal_range[0]}-{self.sensor_config.optimal_range[1]}°C"
     
     def go_back(self, instance):
-        """Gå tillbaka till hemskärmen"""
-        # Sätt animationsriktning till höger
+        """
+        Navigera tillbaka till huvudskärmen
+        """
         self.manager.transition.direction = 'right'
-        
-        # Gå tillbaka till hemskärmen
         self.manager.current = 'home'

@@ -6,6 +6,7 @@ from kivy.uix.button import Button
 from kivy.metrics import dp
 from components.temperature_card import TemperatureCard
 from components.dropdown_menu import DropDownMenu
+from notifications.notification_manager import NotificationManager
 
 class HomeScreen(Screen):
     """
@@ -13,6 +14,11 @@ class HomeScreen(Screen):
     """
     def __init__(self, **kwargs):
         super(HomeScreen, self).__init__(**kwargs)
+
+        # Initialisera DataManager och hämta provider
+        from data.data_manager import DataManager
+        self.data_manager = DataManager.get_instance()
+        self.data_provider = self.data_manager.get_provider()
         
         # Huvudlayout - inga scrollbara delar här
         self.layout = BoxLayout(orientation='vertical', spacing=dp(3))
@@ -41,7 +47,7 @@ class HomeScreen(Screen):
         # Container för det scrollbara innehållet
         self.scrollable_content = BoxLayout(
             orientation='vertical', 
-            spacing=dp(20),
+            spacing=dp(10),
             size_hint=(1, None),  # Viktig för scrollning
             padding=dp(10)
         )
@@ -49,9 +55,9 @@ class HomeScreen(Screen):
         # Skapa container för korten
         self.cards_layout = BoxLayout(
             orientation='vertical', 
-            spacing=dp(20), 
+            spacing=dp(15), 
             size_hint=(1, None),  # Viktig för scrollning
-            height=dp(400)  # Justerat eftersom vi har färre kort
+            height=dp(350)  # Justerat eftersom vi har färre kort
         )
         
         # Lägg till cards_layout till scrollable_content
@@ -76,6 +82,17 @@ class HomeScreen(Screen):
         )
         refresh_button.bind(on_press=self.refresh_data)
         self.layout.add_widget(refresh_button)
+
+        # Knapp för att simulera kritiska förhållanden (för testning)
+        test_button = Button(
+            text="Simulera Kritisk",
+            size_hint=(1, None),
+            height=dp(50),
+            background_normal='',
+            background_color=(0.8, 0.2, 0.2, 1)
+        )
+        test_button.bind(on_release=self.simulate_critical)
+        self.layout.add_widget(test_button)
         
         self.add_widget(self.layout)
     
@@ -86,30 +103,28 @@ class HomeScreen(Screen):
         self._add_mock_cards()
     
     def _add_mock_cards(self):
-        """Lägg till kort med exempeldata för testning"""
+        """Lägg till kort baserat på data från providern"""
         # Rensa befintliga kort först
         self.cards_layout.clear_widgets()
         
-        # Skapa och lägg till temperaturkort
-        panna_card = TemperatureCard(name="PANNA", temp=78.5, optimal_range=(78, 82))
-        kylare_card = TemperatureCard(name="KYLARE", temp=18.5, optimal_range=(15, 25))
-        utlopp_card = TemperatureCard(name="UTLOPP", temp=25.3, optimal_range=(20, 35))
+        # Hämta data från providern
+        sensor_data = self.data_provider.get_sensor_data()
         
-        # Bind klickhändelser
-        panna_card.bind(on_release=self.on_panna_press)
-        kylare_card.bind(on_release=self.on_kylare_press)
-        utlopp_card.bind(on_release=self.on_utlopp_press)
+        # Lista för att hålla korten
+        cards = []
         
-        # Lägg till korten
-        self.cards_layout.add_widget(panna_card)
-        self.cards_layout.add_widget(kylare_card)
-        self.cards_layout.add_widget(utlopp_card)
+        # Skapa kort för varje sensor
+        for sensor in sensor_data:
+            card = TemperatureCard(name=sensor['name'], temp=sensor['temp'])
+            card.bind(on_release=lambda x, sensor_name=sensor['name'], sensor_temp=sensor['temp']: 
+                    self.show_details(sensor_name, sensor_temp))
+            cards.append(card)
+            self.cards_layout.add_widget(card)
         
         # Uppdatera höjden på cards_layout för att få korrekt scrollning
-        total_height = sum(card.height + dp(13) for card in [panna_card, kylare_card, utlopp_card])
+        total_height = sum(card.height + dp(10) for card in cards)
         self.cards_layout.height = total_height
 
-    # Resten av metoderna är oförändrade
     def on_panna_press(self, instance):
         self.show_details("PANNA", 78.5, (78, 82))
         
@@ -120,43 +135,31 @@ class HomeScreen(Screen):
         self.show_details("UTLOPP", 25.3, (20, 35))
     
     def refresh_data(self, instance):
-        """Uppdatera data (kommer senare att hämta från API)"""
-        # Rensa alla existerande kort
-        self.cards_layout.clear_widgets()
+        """Uppdatera data från providern"""
+        # Uppdatera provider för att hämta ny data
+        self.data_provider.update()
         
-        # Lägg till uppdaterade kort (för nu ändrar vi bara lite värden)
-        import random
+        # Hämta uppdaterade sensordata
+        sensor_data = self.data_provider.get_sensor_data()
         
-        panna_temp = 78.5 + random.uniform(-2, 2)
-        kylare_temp = 18.5 + random.uniform(-5, 5)
-        utlopp_temp = 25.3 + random.uniform(-3, 3)
+        # Få åtkomst till notifikationshanteraren
+        notification_manager = NotificationManager.get_instance()
         
-        panna_card = TemperatureCard(name="PANNA", temp=panna_temp, optimal_range=(78, 82))
-        kylare_card = TemperatureCard(name="KYLARE", temp=kylare_temp, optimal_range=(15, 25))
-        utlopp_card = TemperatureCard(name="UTLOPP", temp=utlopp_temp, optimal_range=(20, 35))
+        # Bearbeta varje sensor för eventuella notifikationer
+        for sensor in sensor_data:
+            notification_manager.process_sensor_update(sensor['name'], sensor['temp'])
         
-        # Bind klickhändelser
-        panna_card.bind(on_release=lambda x: self.show_details("PANNA", panna_temp, (78, 82)))
-        kylare_card.bind(on_release=lambda x: self.show_details("KYLARE", kylare_temp, (15, 25)))
-        utlopp_card.bind(on_release=lambda x: self.show_details("UTLOPP", utlopp_temp, (20, 35)))
-        
-        # Lägg till korten
-        self.cards_layout.add_widget(panna_card)
-        self.cards_layout.add_widget(kylare_card)
-        self.cards_layout.add_widget(utlopp_card)
-        
-        # Uppdatera höjden på cards_layout
-        total_height = sum(card.height + dp(20) for card in [panna_card, kylare_card, utlopp_card])
-        self.cards_layout.height = total_height
+        # Lägg till uppdaterade kort
+        self._add_mock_cards()
     
-    def show_details(self, name, temp, optimal_range):
+    def show_details(self, name, temp):
         """Visa detaljskärmen för en sensor"""
         try:
             # Hämta detaljskärmen från screen manager
             detail_screen = self.manager.get_screen('detail')
             
-            # Sätt aktuell sensor och dess data
-            detail_screen.set_sensor(name, temp, optimal_range)
+            # Sätt aktuell sensor och dess data - nu använder vi SensorConfig
+            detail_screen.set_sensor(name, temp)
             
             # Sätt animationsriktning till vänster
             self.manager.transition.direction = 'left'
@@ -166,3 +169,17 @@ class HomeScreen(Screen):
         except Exception as e:
             # Behåll en enkel felhantering för att fånga allvarliga problem
             print(f"Error navigating to detail screen: {e}")
+
+    
+
+    # Och lägg till metoden:
+    def simulate_critical(self, instance):
+        """Simulerar en kritisk temperatur för testning av notifikationer"""
+        sensor, temp = self.data_provider.simulate_critical_conditions()
+        
+        # Meddela notifikationssystemet
+        notification_manager = NotificationManager.get_instance()
+        notification_manager.process_sensor_update(sensor, temp)
+        
+        # Uppdatera korten
+        self._add_mock_cards()
