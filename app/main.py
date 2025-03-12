@@ -7,6 +7,16 @@ from screens.detail_screen import DetailScreen
 from screens.about_screen import AboutScreen
 from notifications.notification_manager import NotificationManager
 from services.background_monitor import BackgroundMonitor
+from database.db_manager import DatabaseManager
+
+# Initiera databasen
+DatabaseManager.initialize_database()
+DatabaseManager.check_and_upgrade_database()
+
+# Generera testdata för först körning
+from data.mock_data_provider import MockDataProvider
+mock_provider = MockDataProvider()
+mock_provider.generate_test_history()
 
 # Sätt app-storlek (viktigt för testning på dator)
 Window.size = (400, 700)  # Typisk mobiltelefonsstorlek

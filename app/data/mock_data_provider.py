@@ -4,6 +4,9 @@ MockDataProvider - Simulerar sensordata för testning.
 
 import random
 from .data_provider import DataProvider
+from data.temperature_history import TemperatureHistory
+from database.db_manager import DatabaseManager
+from datetime import datetime, timedelta
 
 class MockDataProvider(DataProvider):
     """
@@ -94,3 +97,43 @@ class MockDataProvider(DataProvider):
         self.current_temps[sensor] = round(critical_value, 1)
         
         return sensor, self.current_temps[sensor]
+    
+    # TEST DATA
+    def generate_test_history(self):
+        """Genererar testdata för grafvisning"""
+        # Radera eventuell befintlig data för tydligare test
+        conn = DatabaseManager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM temperature_readings")
+        conn.commit()
+        conn.close()
+        
+        # Generera historik för varje sensor
+        for sensor_name in self.current_temps.keys():
+            # Skapa tidsperiod för de senaste 3 timmarna
+            now = datetime.now()
+            
+            # Hämta sensorns konfiguration
+            from models.sensor_config import SensorConfigs
+            config = SensorConfigs.get_sensor_by_name(sensor_name)
+            
+            # Beräkna bastemperatur och variation
+            base_temp = self.base_temps[sensor_name]
+            
+            # Använd fluktuationsintervallet för variation
+            min_fluct, max_fluct = self.fluctuation_ranges[sensor_name]
+            variation = max(abs(min_fluct), abs(max_fluct))
+            
+            for i in range(20):
+                # Gå tillbaka i tiden
+                time_point = now - timedelta(minutes=10 * (19-i))
+                
+                # Generera temperatur runt bastemperaturen med viss variation
+                temp = base_temp + (random.random() - 0.5) * variation * 2
+                
+                # Spara till databasen med korrekt timestamp
+                TemperatureHistory.add_temperature_with_timestamp(
+                    sensor_name, 
+                    round(temp, 1),  # Avrunda till en decimal
+                    time_point.isoformat()
+                )
