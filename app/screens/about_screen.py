@@ -1,10 +1,11 @@
-from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.label import MDLabel
+from kivymd.uix.button import MDButton, MDButtonText
 from kivy.metrics import dp
+from kivy.graphics import Color, Rectangle
 
-class AboutScreen(Screen):
+class AboutScreen(MDScreen):
     """
     Skärm som visar information om appen och utvecklaren.
     """
@@ -12,14 +13,21 @@ class AboutScreen(Screen):
         super(AboutScreen, self).__init__(**kwargs)
         
         # Huvudlayout
-        self.layout = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(20))
+        self.layout = MDBoxLayout(
+            orientation='vertical', 
+            padding=dp(20), 
+            spacing=dp(20),
+            md_bg_color=[0.12, 0.12, 0.12, 1]  # Svart bakgrund
+        )
         
         # Titel
-        title = Label(
+        title = MDLabel(
             text='Om Destillationsmonitorn',
-            font_size=dp(26),
+            font_style='Headline',  # Material Design typografi
             size_hint=(1, 0.15),
-            bold=True
+            halign='center',
+            theme_text_color="Custom",
+            text_color=[1, 1, 1, 1]  # Vit text för kontrast mot svart bakgrund
         )
         self.layout.add_widget(title)
         
@@ -35,13 +43,15 @@ Utvecklad av: Aleh Kharolski
 Kontakt: kharolski@gmail.com
         """
         
-        info_label = Label(
+        info_label = MDLabel(
             text=info_text,
-            font_size=dp(18),
+            font_style='Body',  # Material Design typografi
             size_hint=(1, 0.75),
             halign='left',
             valign='top',
-            text_size=(None, None)  # Anpassas i on_size
+            text_size=(None, None),  # Anpassas i on_size
+            theme_text_color="Custom",
+            text_color=[0.9, 0.9, 0.9, 1]  # Ljusgrå text för bättre läsbarhet
         )
         
         # Uppdatera textens storlek när skärmen ändrar storlek
@@ -52,11 +62,16 @@ Kontakt: kharolski@gmail.com
         
         self.layout.add_widget(info_label)
         
-        # Tillbaka-knapp
-        back_button = Button(
-            text='Tillbaka',
+        # Tillbaka-knapp - uppdaterad för KivyMD 2.0.1
+        back_button = MDButton(
+            MDButtonText(
+                text='Tillbaka',
+                theme_text_color="Custom",
+                text_color=[1, 1, 1, 1]  # Vit text
+            ),
+            style="filled",  # Lägg till stil
             size_hint=(1, 0.1),
-            background_color=(0.3, 0.3, 0.3, 1)
+            md_bg_color=[0.2, 0.2, 0.2, 1],  # Mörkgrå knapp
         )
         back_button.bind(on_press=self.go_back)
         self.layout.add_widget(back_button)

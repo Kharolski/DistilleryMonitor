@@ -1,14 +1,16 @@
-from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.label import Label
-from kivy.uix.button import Button
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.label import MDLabel
+from kivymd.uix.button import MDButton, MDButtonText
 from kivy.metrics import dp
+from kivy.graphics import Color, Rectangle
+
 from components.temperature_card import TemperatureCard
 from components.dropdown_menu import DropDownMenu
 from notifications.notification_manager import NotificationManager
 
-class HomeScreen(Screen):
+class HomeScreen(MDScreen):
     """
     Hemskärmen som visar alla temperatursensorer.
     """
@@ -21,10 +23,21 @@ class HomeScreen(Screen):
         self.data_provider = self.data_manager.get_provider()
         
         # Huvudlayout - inga scrollbara delar här
-        self.layout = BoxLayout(orientation='vertical', spacing=dp(3))
+        self.layout = MDBoxLayout(
+            orientation='vertical', 
+            spacing=dp(3),
+            theme_bg_color="Custom",
+            md_bg_color=[0.2, 0.2, 0.2, 1]  # bakgrund
+        )
         
         # Header-sektion med meny - denna del är "sticky"
-        self.header = BoxLayout(orientation='vertical', size_hint=(1, None), height=dp(50))
+        self.header = MDBoxLayout(
+            orientation='vertical', 
+            size_hint=(1, None), 
+            height=dp(50),
+            theme_bg_color="Custom",
+            md_bg_color=[0, 0, 0, 0]  # bakgrund för header
+        )
         
         # Lägg till dropdown-meny i headern
         self.dropdown_menu = DropDownMenu()
@@ -33,31 +46,31 @@ class HomeScreen(Screen):
         # Lägg till headern i huvudlayouten
         self.layout.add_widget(self.header)
         
-        # Liten padding mellan header och scrollbart innehåll
-        padding_box = BoxLayout(size_hint=(1, None), height=dp(0))
-        self.layout.add_widget(padding_box)
-        
         # Skapar en scrollbar för innehållet (korten)
-        self.scroll_view = ScrollView(
+        self.scroll_view = MDScrollView(
             size_hint=(1, 1),
             do_scroll_x=False,
-            do_scroll_y=True
+            do_scroll_y=True,
+            bar_color=[0.7, 0.7, 0.7, 0.8],  # Ljusgrå scrollbar
+            bar_width=dp(4)  # Lite bredare scrollbar för bättre synlighet
         )
         
         # Container för det scrollbara innehållet
-        self.scrollable_content = BoxLayout(
+        self.scrollable_content = MDBoxLayout(
             orientation='vertical', 
-            spacing=dp(10),
+            spacing=dp(0),
             size_hint=(1, None),  # Viktig för scrollning
-            padding=dp(10)
+            padding=dp(10),
+            md_bg_color=[0, 0, 0, 0]  # bakgrund
         )
         
         # Skapa container för korten
-        self.cards_layout = BoxLayout(
+        self.cards_layout = MDBoxLayout(
             orientation='vertical', 
-            spacing=dp(15), 
+            spacing=dp(10),
             size_hint=(1, None),  # Viktig för scrollning
-            height=dp(350)  # Justerat eftersom vi har färre kort
+            height=dp(350),  # Justerat eftersom vi har färre kort
+            md_bg_color=[0, 0, 0, 0]  # bakgrund
         )
         
         # Lägg till cards_layout till scrollable_content
@@ -73,26 +86,46 @@ class HomeScreen(Screen):
         # Lägg till scroll_view till huvudlayouten
         self.layout.add_widget(self.scroll_view)
         
-        # Uppdateringsknapp - ligger utanför scrollbara området
-        refresh_button = Button(
-            text='Uppdatera',
+        # Knappcontainer för bättre layout - ändrad till horisontell orientering
+        button_container = MDBoxLayout(
+            orientation='horizontal',  # Ändrad från 'vertical' till 'horizontal'
+            spacing=dp(10),  # Ökat mellanrum mellan knapparna
+            padding=[dp(10), dp(5), dp(10), dp(10)],
             size_hint=(1, None),
-            height=dp(50),
-            background_color=(0.3, 0.5, 0.9, 1)
+            height=dp(54),  # Minskad höjd eftersom knapparna nu är bredvid varandra
+            md_bg_color=[0.2, 0.2, 0.2, 1]  # bakgrund
+        )
+        
+        # Uppdateringsknapp - ligger utanför scrollbara området
+        refresh_button = MDButton(
+            MDButtonText(
+                text='Uppdatera',
+            ),
+            style="filled",  # Lägg till stil
+            size_hint=(0.5, None),
+            height=dp(40),
+            theme_bg_color="Custom",
+            md_bg_color=[0.2, 0.4, 0.6, 1],  # Blå knapp
         )
         refresh_button.bind(on_press=self.refresh_data)
-        self.layout.add_widget(refresh_button)
+        button_container.add_widget(refresh_button)
 
         # Knapp för att simulera kritiska förhållanden (för testning)
-        test_button = Button(
-            text="Simulera Kritisk",
-            size_hint=(1, None),
-            height=dp(50),
-            background_normal='',
-            background_color=(0.8, 0.2, 0.2, 1)
+        test_button = MDButton(
+            MDButtonText(
+                text="Simulera Kritisk",
+            ),
+            style="filled",  # Lägg till stil
+            size_hint=(0.5, None),
+            height=dp(40),
+            theme_bg_color="Custom",
+            md_bg_color=[0.8, 0.2, 0.2, 1],  # Röd knapp
         )
         test_button.bind(on_release=self.simulate_critical)
-        self.layout.add_widget(test_button)
+        button_container.add_widget(test_button)
+        
+        # Lägg till knappcontainern till huvudlayouten
+        self.layout.add_widget(button_container)
         
         self.add_widget(self.layout)
     
@@ -122,7 +155,7 @@ class HomeScreen(Screen):
             self.cards_layout.add_widget(card)
         
         # Uppdatera höjden på cards_layout för att få korrekt scrollning
-        total_height = sum(card.height + dp(10) for card in cards)
+        total_height = sum(card.height + dp(7) for card in cards)
         self.cards_layout.height = total_height
 
     def on_panna_press(self, instance):
@@ -170,9 +203,7 @@ class HomeScreen(Screen):
             # Behåll en enkel felhantering för att fånga allvarliga problem
             print(f"Error navigating to detail screen: {e}")
 
-    
-
-    # Och lägg till metoden:
+    # Test metoden:
     def simulate_critical(self, instance):
         """Simulerar en kritisk temperatur för testning av notifikationer"""
         sensor, temp = self.data_provider.simulate_critical_conditions()

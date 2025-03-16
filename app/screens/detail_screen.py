@@ -1,13 +1,17 @@
-from kivy.uix.screenmanager import Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.label import MDLabel
+from kivymd.uix.button import MDButton, MDButtonText
 from kivy.metrics import dp
 from components.temperature_graph import TemperatureGraph
 from data.temperature_history import TemperatureHistory
 from kivy.clock import Clock
+from kivymd.uix.card import MDCard
+from kivy.uix.widget import Widget
+from kivymd.app import MDApp
+from kivy.graphics import Color, Rectangle
 
-class DetailScreen(Screen):
+class DetailScreen(MDScreen):
     """
     Skärm som visar detaljerad information om en temperaturgivare.
     """
@@ -15,206 +19,255 @@ class DetailScreen(Screen):
     def __init__(self, **kwargs):
         super(DetailScreen, self).__init__(**kwargs)
         
+        # Ställ in bakgrund för hela skärmen med canvas
+        with self.canvas.before:
+            Color(0.12, 0.12, 0.12, 1)  # Vit färg (RGBA)
+            self.bg_rect = Rectangle(pos=self.pos, size=self.size)
+        
+        # Uppdatera rektangeln när skärmens storlek ändras
+        self.bind(size=self._update_bg, pos=self._update_bg)
+        
         # Initiera huvudvariabler
         self.sensor_name = ""
         self.temperature = 0.0
         self.sensor_config = None
         
         # Skapa huvudlayout
-        main_layout = BoxLayout(
+        main_layout = MDBoxLayout(
             orientation='vertical',
             padding=dp(15),  # Minska padding för mer kompakt layout
-            spacing=dp(8)    # Minska spacing
+            spacing=dp(8),   # Minska spacing
+            md_bg_color=[0, 0, 0, 0]  # bakgrund
         )
         
         # Titel för skärmen
-        title_container = BoxLayout(
+        title_container = MDBoxLayout(
             orientation='horizontal',
             size_hint=(1, 0.08),  # Minska höjden för en mer kompakt layout
-            padding=[0, 0, 0, dp(5)]  # Lägg till lite padding i botten
+            padding=[0, 0, 0, dp(5)],  # Lägg till lite padding i botten
+            md_bg_color=[0, 0, 0, 0]  # Transparant bakgrund
         )
         
-        self.title_label = Label(
+        self.title_label = MDLabel(
             text="Sensor Details",
-            font_size=dp(22),
-            bold=True,
+            font_style="Title",  
+            halign='center',
             size_hint=(1, 1),
-            halign='center'
+            theme_text_color="Custom",
+            text_color=[1, 1, 1, 1]  # Vit text för kontrast mot svart bakgrund
         )
-        self.title_label.bind(size=lambda *args: setattr(self.title_label, 'text_size', (self.title_label.width, None)))
         
         title_container.add_widget(self.title_label)
         main_layout.add_widget(title_container)
         
         # Innehållslayout
-        content = BoxLayout(
+        content = MDBoxLayout(
             orientation='vertical',
-            spacing=dp(0),  # Ingen standardspacing - vi styr detta individuellt
-            size_hint=(1, 0.84)
+            spacing=dp(-5),  # Ingen standardspacing - vi styr detta individuellt
+            size_hint=(1, 0.84),
+            md_bg_color=[0, 0, 0, 0]  # transparant bakgrund
+        )
+
+        # Skapa ett kort för sensorinformation
+        info_card = MDCard(
+            orientation="vertical",
+            padding=dp(15),
+            elevation=4,  # Lägg till skugga för kontrast mot svart bakgrund
+            radius=[10, 10, 10, 10],  # Behåll rundade hörn
+            size_hint=(1, None),
+            height=dp(180),
+            theme_bg_color="Custom",
+            md_bg_color=[0.2, 0.2, 0.2, 1]  # Mörkgrå bakgrund för kortet
         )
 
         # Temperaturvisning
-        temp_box = BoxLayout(
-            orientation='horizontal',
-            spacing=dp(10),
-            size_hint=(1, 0.1)  # Minska höjden
-        )
-
-        temp_header = Label(
-            text="Aktuell temperatur:",
-            font_size=dp(16),
-            size_hint=(0.5, 1),
-            halign='right',
-            valign='middle'
-        )
-        temp_header.bind(size=lambda *args: setattr(temp_header, 'text_size', (temp_header.width, temp_header.height)))
-        temp_box.add_widget(temp_header)
-
-        self.temp_label = Label(
-            text="--°C",
-            font_size=dp(32),
-            bold=True,
-            size_hint=(0.5, 1),
-            halign='left',
-            valign='middle'
-        )
-        self.temp_label.bind(size=lambda *args: setattr(self.temp_label, 'text_size', (self.temp_label.width, self.temp_label.height)))
-        temp_box.add_widget(self.temp_label)
-
-        content.add_widget(temp_box)
-
-        # Optimal temperaturintervall - direkt under temperatur utan mellanrum
-        optimal_box = BoxLayout(
+        temp_box = MDBoxLayout(
             orientation='horizontal',
             spacing=dp(10),
             size_hint=(1, 0.1),  # Minska höjden
-            padding=[0, 0, 0, 0]  # Ingen padding
+            md_bg_color=[0, 0, 0, 0]  # Transparant bakgrund
         )
 
-        optimal_header = Label(
-            text="Optimalt intervall:",
-            font_size=dp(16),
+        temp_header = MDLabel(
+            text="Aktuell temperatur:",
+            font_style="Label",
             size_hint=(0.5, 1),
             halign='right',
-            valign='middle'
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[0.9, 0.9, 0.9, 1]  # Ljusgrå text för bättre läsbarhet
         )
-        optimal_header.bind(size=lambda *args: setattr(optimal_header, 'text_size', (optimal_header.width, optimal_header.height)))
-        optimal_box.add_widget(optimal_header)
+        temp_box.add_widget(temp_header)
 
-        self.optimal_label = Label(
-            text="--",
-            font_size=dp(16),
-            size_hint=(0.5, 1),
-            halign='left',
-            valign='middle'
-        )
-        self.optimal_label.bind(size=lambda *args: setattr(self.optimal_label, 'text_size', (self.optimal_label.width, self.optimal_label.height)))
-        optimal_box.add_widget(self.optimal_label)
-
-        content.add_widget(optimal_box)
-
-        # Lägg till mellanrum mellan temperatur och status
-        from kivy.uix.widget import Widget
-        content.add_widget(Widget(size_hint_y=0.03))  # Mellanrum
-
-        # Status
-        status_box = BoxLayout(
-            orientation='horizontal',
-            spacing=dp(10),
-            size_hint=(1, 0.1)  # Minska höjden
-        )
-
-        status_header = Label(
-            text="Status:",
-            font_size=dp(16),
-            size_hint=(0.5, 1),
-            halign='right',
-            valign='middle'
-        )
-        status_header.bind(size=lambda *args: setattr(status_header, 'text_size', (status_header.width, status_header.height)))
-        status_box.add_widget(status_header)
-
-        self.status_label = Label(
-            text="--",
-            font_size=dp(20),
+        self.temp_label = MDLabel(
+            text="--°C",
+            font_style="Headline",
             bold=True,
             size_hint=(0.5, 1),
             halign='left',
-            valign='middle'
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[1, 1, 1, 1]  # Vit text för temperatur
         )
-        self.status_label.bind(size=lambda *args: setattr(self.status_label, 'text_size', (self.status_label.width, self.status_label.height)))
+        temp_box.add_widget(self.temp_label)
+
+        info_card.add_widget(temp_box)
+
+        # Optimal temperaturintervall - direkt under temperatur utan mellanrum
+        optimal_box = MDBoxLayout(
+            orientation='horizontal',
+            spacing=dp(10),
+            size_hint=(1, 0.1),  # Minska höjden
+            padding=[0, 0, 0, 0],  # Ingen padding
+            md_bg_color=[0, 0, 0, 0]  # Mörkgrå bakgrund
+        )
+
+        optimal_header = MDLabel(
+            text="Optimalt intervall:",
+            font_style="Label",
+            size_hint=(0.5, 1),
+            halign='right',
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[0.9, 0.9, 0.9, 1]  # Ljusgrå text
+        )
+        optimal_box.add_widget(optimal_header)
+
+        self.optimal_label = MDLabel(
+            text="--",
+            font_style="Label",
+            size_hint=(0.5, 1),
+            halign='left',
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[1, 1, 1, 1]  # Vit text
+        )
+        optimal_box.add_widget(self.optimal_label)
+
+        info_card.add_widget(optimal_box)
+
+        # Lägg till mellanrum mellan temperatur och status
+        info_card.add_widget(Widget(size_hint_y=0.03))  # Mellanrum
+
+        # Status
+        status_box = MDBoxLayout(
+            orientation='horizontal',
+            spacing=dp(10),
+            size_hint=(1, 0.1),  # Minska höjden
+            md_bg_color=[0, 0, 0, 0]  # Transparant bakgrund
+        )
+
+        status_header = MDLabel(
+            text="Status:",
+            font_style="Label",
+            size_hint=(0.5, 1),
+            halign='right',
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[0.9, 0.9, 0.9, 1]  # Ljusgrå text
+        )
+        status_box.add_widget(status_header)
+
+        self.status_label = MDLabel(
+            text="--",
+            font_style="Title",
+            bold=True,
+            size_hint=(0.5, 1),
+            halign='left',
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[1, 1, 1, 1]  # Vit text som standard, ändras dynamiskt
+        )
         status_box.add_widget(self.status_label)
 
-        content.add_widget(status_box)
+        info_card.add_widget(status_box)
 
         # Nästan inget mellanrum mellan status och meddelande
-        content.add_widget(Widget(size_hint_y=0.01))  # Minimalt mellanrum
+        info_card.add_widget(Widget(size_hint_y=0.01))  # Minimalt mellanrum
 
         # Meddelande
-        message_box = BoxLayout(
+        message_box = MDBoxLayout(
             orientation='vertical',
             spacing=dp(0),
-            size_hint=(1, 0.1)  # Minska höjden
+            size_hint=(1, 0.1),  # Minska höjden
+            md_bg_color=[0, 0, 0, 0]  # Transparant bakgrund
         )
 
-        self.message_label = Label(
+        self.message_label = MDLabel(
             text="Ingen information tillgänglig",
-            font_size=dp(16),
+            font_style="Body",
             size_hint=(1, 1),
             halign='center',
-            valign='middle'
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[0.9, 0.9, 0.9, 1]  # Ljusgrå text
         )
-        # Aktivera radbrytning för meddelandet
-        self.message_label.bind(size=lambda *args: setattr(self.message_label, 'text_size', (self.message_label.width, None)))
 
         message_box.add_widget(self.message_label)
-        content.add_widget(message_box)
-
+        info_card.add_widget(message_box)
+        
+        # Lägg till infokortet till innehållet
+        content.add_widget(info_card)
+        
         # Mellanrum före grafen
         content.add_widget(Widget(size_hint_y=0.03))  # Mellanrum
 
         # Plats för temperaturgrafen
-        graph_container = BoxLayout(
+        graph_card = MDCard(
+            orientation="vertical",
+            padding=dp(8),
+            elevation=4,  # Lägg till skugga för kontrast
+            radius=[10, 10, 10, 10],  # Behåll rundade hörn
             size_hint=(1, 0.49),  # Ge grafen mer utrymme
-            padding=[0, dp(3), 0, 0]  # Lite padding överst
+            theme_bg_color="Custom",
+            md_bg_color=[0.2, 0.2, 0.2, 1]  # Mörkgrå bakgrund för grafen
         )
 
         # Skapa graf-komponenten
         self.temperature_graph = TemperatureGraph()
 
-        # Ställ in intervall för grafuppdatering (var 10:e sekund)
-        Clock.schedule_interval(self.update_graph, 10)
-        graph_container.add_widget(self.temperature_graph)
+        # Ställ in intervall för grafuppdatering (var 5:e sekund)
+        Clock.schedule_interval(self.update_graph, 5)
+        graph_card.add_widget(self.temperature_graph)
 
-        content.add_widget(graph_container)
+        content.add_widget(graph_card)
         
         # Lägg till innehållet till huvudlayout
         main_layout.add_widget(content)
         
         # Skapa action bar längst ner med knapparna
-        action_bar = BoxLayout(
+        action_bar = MDBoxLayout(
             orientation='horizontal',
-            size_hint=(1, 0.08),
+            size_hint=(1, 0.07),
             spacing=dp(10),
-            padding=[0, dp(5), 0, 0]  # Padding överst
+            padding=[dp(10), dp(5), dp(10), dp(5)],  # Padding överst
+            md_bg_color=[0, 0, 0, 0]  # Transparent  bakgrund
         )
         
         # Tillbakaknapp
-        back_button = Button(
-            text="Tillbaka",
-            size_hint=(0.5, 1),
-            background_normal='',
-            background_color=(0.3, 0.4, 0.5, 1)
+        back_button = MDButton(
+            MDButtonText(
+                text="Tillbaka",
+            ),
+            style="filled",
+            size_hint=(0.4, None),
+            height=dp(40),
+            theme_bg_color="Custom",
+            md_bg_color=[0.2, 0.4, 0.6, 1]
         )
         back_button.bind(on_release=self.go_back)
         action_bar.add_widget(back_button)
-        
+
         # Inställningsknapp för framtida funktionalitet
-        settings_button = Button(
-            text="Inställningar",
-            size_hint=(0.5, 1),
-            background_normal='',
-            background_color=(0.5, 0.5, 0.5, 1)  # Grå för att indikera inaktiv funktion
+        settings_button = MDButton(
+            MDButtonText(
+                text="Inställningar",
+            ),
+            style="filled",
+            size_hint=(0.6, None),
+            height=dp(40),
+            theme_bg_color="Custom",
+            md_bg_color=[0.6, 0.4, 0.2, 1]
         )
         settings_button.bind(on_release=self.show_settings_info)
         action_bar.add_widget(settings_button)
@@ -250,14 +303,14 @@ class DetailScreen(Screen):
         
         # Uppdatera status-relaterade UI-element
         self.status_label.text = status.upper()
-        self.status_label.color = status_color
+        self.status_label.text_color = status_color
 
         # Uppdatera grafen
         self.temperature_graph.set_sensor(name)
         self.temperature_graph.set_status_color(status_color)
         
         # Sätt samma färg på temperaturvisningen
-        self.temp_label.color = status_color
+        self.temp_label.text_color = status_color
         
         self.message_label.text = status_message
         
@@ -294,3 +347,8 @@ class DetailScreen(Screen):
         """Periodisk uppdatering av grafen"""
         if hasattr(self, 'temperature_graph') and self.sensor_name:
             self.temperature_graph.update()
+
+    def _update_bg(self, *args):
+        """Uppdaterar bakgrundsrektangelns storlek och position"""
+        self.bg_rect.pos = self.pos
+        self.bg_rect.size = self.size

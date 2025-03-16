@@ -1,23 +1,17 @@
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.graphics import Color, RoundedRectangle
+from kivymd.uix.card import MDCard
+from kivymd.uix.label import MDLabel
+from kivymd.uix.behaviors import RectangularRippleBehavior
 from kivy.metrics import dp
-from kivy.uix.behaviors import ButtonBehavior
 from models.sensor_config import SensorConfigs
+from kivy.properties import ListProperty
 
-class TemperatureCard(ButtonBehavior, BoxLayout):
+class TemperatureCard(MDCard, RectangularRippleBehavior):
     """
     Komponent som visar temperaturinformation för en sensor.
-    Fungerar även som en knapp som kan klickas.
+    Fungerar även som en knapp som kan klickas med ripple-effekt.
     """
+    
     def __init__(self, name, temp, **kwargs):
-        super(TemperatureCard, self).__init__(**kwargs)
-        self.orientation = 'vertical'
-        self.padding = dp(15)
-        self.spacing = dp(10)
-        self.size_hint = (1, None)
-        self.height = dp(200)
-        
         # Spara sensordata
         self.name = name
         self.temp = temp
@@ -43,79 +37,85 @@ class TemperatureCard(ButtonBehavior, BoxLayout):
         self.status = self.sensor_config.get_status(temp)
         self.status_message = self.sensor_config.get_status_message(temp)
         
+        # Ställ in kortets egenskaper i kwargs
+        kwargs['orientation'] = 'vertical'
+        kwargs['padding'] = dp(15)
+        kwargs['spacing'] = dp(10)
+        kwargs['size_hint'] = (1, None)
+        kwargs['height'] = dp(160)
+        kwargs['radius'] = [dp(15)]
+        kwargs['style'] = "elevated"
+        kwargs['theme_bg_color'] = "Custom"
+        kwargs['md_bg_color'] = self.card_color
+        
+        # Anropa förälderns konstruktor med alla inställningar
+        super(TemperatureCard, self).__init__(**kwargs)
+        
         # Skapa och lägg till widgets
         self._create_widgets()
-        self._draw_background()
-        
+    
     def _create_widgets(self):
+        # Rensa eventuella tidigare widgets
+        self.clear_widgets()
+        
         # Sensornamn
-        name_label = Label(
+        name_label = MDLabel(
             text=self.name,
-            font_size=dp(24),
+            font_size=dp(18),
             size_hint=(1, 0.2),
-            bold=True
+            halign="left",
+            bold=True,
+            theme_text_color="Custom",
+            text_color=[0, 0, 0, 1]  # Svart text
         )
         self.add_widget(name_label)
         
         # Temperaturvärde
-        temp_label = Label(
+        temp_label = MDLabel(
             text=f"{self.temp:.1f}°C",
-            font_size=dp(36),
+            font_style="Headline",
+            role="medium",
             size_hint=(1, 0.3),
-            bold=True
+            halign="center",
+            theme_text_color="Custom",
+            text_color=[0, 0, 0, 1]  # Svart text
         )
         self.add_widget(temp_label)
         
         # Optimalt intervall
-        optimal_label = Label(
+        optimal_label = MDLabel(
             text=f"Optimal: {self.sensor_config.optimal_range[0]}-{self.sensor_config.optimal_range[1]}°C",
-            font_size=dp(16),
-            size_hint=(1, 0.2)
+            font_size=dp(14),
+            size_hint=(1, 0.2),
+            halign="center",
+            theme_text_color="Custom",
+            text_color=[0, 0, 0, 1]  # Svart text
         )
         self.add_widget(optimal_label)
         
         # Status meddelande
-        status_label = Label(
+        status_label = MDLabel(
             text=self.status_message,
             font_size=dp(14),
             size_hint=(1, 0.3),
-            halign='center',
-            valign='middle'
+            halign="center",
+            valign="middle",
+            theme_text_color="Custom",
+            text_color=[0, 0, 0, 1]  # Svart text
         )
-        # Ställ in text_size för att text ska radbrytas
-        status_label.bind(size=lambda *args: setattr(status_label, 'text_size', (status_label.width, None)))
         self.add_widget(status_label)
-    
-    def _draw_background(self):
-        # Rita bakgrunden med avrundade hörn
-        with self.canvas.before:
-            Color(*self.card_color)
-            self.bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(15)])
-        
-        # Uppdatera bakgrundens position när widgeten flyttas
-        self.bind(pos=self._update_bg, size=self._update_bg)
-    
-    def _update_bg(self, *args):
-        self.bg.pos = self.pos
-        self.bg.size = self.size
     
     def update_temperature(self, new_temp):
         """
-        Uppdaterar temperaturvärdet och korsets utseende.
+        Uppdaterar temperaturvärdet och kortets utseende.
         """
         self.temp = new_temp
         self.card_color = self.sensor_config.get_status_color(new_temp)
         self.status = self.sensor_config.get_status(new_temp)
         self.status_message = self.sensor_config.get_status_message(new_temp)
         
-        # Ta bort alla widgets
-        self.clear_widgets()
+        # Uppdatera kortets bakgrundsfärg
+        self.md_bg_color = self.card_color
         
         # Återskapa widgets med ny data
         self._create_widgets()
-        
-        # Uppdatera bakgrundsfärg
-        with self.canvas.before:
-            self.canvas.before.clear()
-            Color(*self.card_color)
-            self.bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(15)])

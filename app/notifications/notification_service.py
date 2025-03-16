@@ -39,15 +39,15 @@ class Notification:
     def get_color(self):
         """Returnerar färg baserat på notifikationstyp"""
         if self.type == self.INFO:
-            return (0.2, 0.6, 1.0, 1.0)  # Blå
+            return [0.2, 0.6, 1.0, 1.0]  # Blå
         elif self.type == self.SUCCESS:
-            return (0.2, 0.8, 0.2, 1.0)  # Grön
+            return [0.2, 0.8, 0.2, 1.0]  # Grön
         elif self.type == self.WARNING:
-            return (1.0, 0.8, 0.0, 1.0)  # Gul
+            return [1.0, 0.8, 0.0, 1.0]  # Gul
         elif self.type == self.CRITICAL:
-            return (1.0, 0.2, 0.2, 1.0)  # Röd
+            return [1.0, 0.2, 0.2, 1.0]  # Röd
         else:
-            return (0.7, 0.7, 0.7, 1.0)  # Grå
+            return [0.7, 0.7, 0.7, 1.0]  # Grå
         
     def get_type_name(self):
         """Returnerar notifikationstypen som sträng"""

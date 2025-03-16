@@ -2,6 +2,7 @@
 Sensorkonfigurationsmodell för destillationsprocessen.
 Denna modul definierar temperaturintervall och tröskelvärden för de olika sensorerna.
 """
+from kivy.utils import get_color_from_hex
 
 class SensorConfig:
     """Basklass för sensorkonfiguration"""
@@ -53,20 +54,20 @@ class SensorConfig:
             temperature (float): Aktuell temperatur
             
         Returnerar:
-            tuple: RGBA-färgkod (0-1 för varje kanal)
+            list: RGBA-färgkod i KivyMD-kompatibelt format
         """
         status = self.get_status(temperature)
         
         if status == "not_ready":
-            return (0.2, 0.6, 1.0, 1.0)  # Blå
+            return get_color_from_hex("#3399FF")  # Blå
         elif status == "optimal":
-            return (0.2, 0.8, 0.2, 1.0)  # Grön
+            return get_color_from_hex("#33CC33")  # Grön
         elif status == "warning":
-            return (1.0, 0.8, 0.0, 1.0)  # Gul
+            return get_color_from_hex("#FFCC00")  # Gul
         elif status == "critical":
-            return (1.0, 0.2, 0.2, 1.0)  # Röd
+            return get_color_from_hex("#FF3333")  # Röd
         else:
-            return (0.5, 0.5, 0.5, 1.0)  # Grå (om något oväntat händer)
+            return get_color_from_hex("#888888")  # Grå (om något oväntat händer)
     
     def get_status_message(self, temperature):
         """

@@ -1,17 +1,19 @@
 """
-NotificationToast visar en tillfällig notifikation i UI.
+NotificationToast visar en tillfällig notifikation i UI med KivyMD-komponenter.
 """
 
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.graphics import Color, RoundedRectangle
-from kivy.metrics import dp
+from kivymd.uix.card import MDCard
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.label import MDLabel
 from kivy.animation import Animation
 from kivy.properties import NumericProperty, ObjectProperty
+from kivy.metrics import dp
 
-class NotificationToast(BoxLayout):
+
+class NotificationToast(MDCard):
     """
     En toast-notifikation som visas tillfälligt och animeras in/ut.
+    Implementerad med KivyMD-komponenter för ett modernt utseende.
     """
     
     # Egenskaper för animation
@@ -19,18 +21,24 @@ class NotificationToast(BoxLayout):
     notification = ObjectProperty(None)
     
     def __init__(self, notification, **kwargs):
+        # Grundinställningar för MDCard
+        kwargs['orientation'] = 'vertical'
+        kwargs['size_hint'] = (None, None)
+        kwargs['width'] = dp(300)
+        kwargs['height'] = dp(100)
+        kwargs['padding'] = dp(15)
+        kwargs['elevation'] = 6
+        kwargs['radius'] = [dp(10)]
+        
+        # Sätt bakgrundsfärg med theme_bg_color
+        kwargs['theme_bg_color'] = "Custom"
+        kwargs['md_bg_color'] = notification.get_color()
+        
+        # Anropa förälderns konstruktor med alla inställningar
         super(NotificationToast, self).__init__(**kwargs)
         
         # Spara notifikationen
         self.notification = notification
-        
-        # Grundinställningar för layout
-        self.orientation = 'vertical'
-        self.size_hint = (None, None)
-        self.width = dp(300)
-        self.height = dp(100)
-        self.padding = dp(15)
-        self.spacing = dp(5)
         
         # Positionera utanför skärmen till att börja med (för animation in)
         self.x_offset = self.width
@@ -43,34 +51,38 @@ class NotificationToast(BoxLayout):
         self._animate_in()
     
     def _setup_ui(self):
-        """Skapar UI-elementen för notifikationen"""
+        """Skapar UI-elementen för notifikationen med KivyMD-komponenter"""
         # Tid och sensornamn
-        header_box = BoxLayout(
+        header_box = MDBoxLayout(
             orientation='horizontal',
             size_hint=(1, 0.3),
             spacing=dp(10)
         )
         
-        # Visa tid
-        time_label = Label(
+        # Visa tid - ändra font_style till font_size
+        time_label = MDLabel(
             text=self.notification.get_formatted_time(),
             font_size=dp(12),
             size_hint=(0.3, 1),
             halign='left',
-            valign='middle'
+            valign='middle',
+            theme_text_color="Custom",
+            text_color=[0, 0, 0, 1]  # Svart text för bättre kontrast
         )
         time_label.bind(size=lambda *args: setattr(time_label, 'text_size', (time_label.width, time_label.height)))
         header_box.add_widget(time_label)
         
         # Visa sensor om tillgänglig
         if self.notification.sensor_name:
-            sensor_label = Label(
+            sensor_label = MDLabel(
                 text=self.notification.sensor_name,
-                font_size=dp(14),
+                font_size=dp(16),
                 bold=True,
                 size_hint=(0.7, 1),
                 halign='right',
-                valign='middle'
+                valign='middle',
+                theme_text_color="Custom",
+                text_color=[0, 0, 0, 1]  # Svart text för bättre kontrast
             )
             sensor_label.bind(size=lambda *args: setattr(sensor_label, 'text_size', (sensor_label.width, sensor_label.height)))
             header_box.add_widget(sensor_label)
@@ -78,43 +90,17 @@ class NotificationToast(BoxLayout):
         self.add_widget(header_box)
         
         # Visa meddelande
-        message_label = Label(
+        message_label = MDLabel(
             text=self.notification.message,
             font_size=dp(14),
             size_hint=(1, 0.7),
             halign='left',
-            valign='top'
+            valign='top',
+            theme_text_color="Custom",
+            text_color=[0, 0, 0, 1]  # Svart text för bättre kontrast
         )
         message_label.bind(size=lambda *args: setattr(message_label, 'text_size', (message_label.width, None)))
         self.add_widget(message_label)
-        
-        # Rita bakgrund med korrekt färg
-        with self.canvas.before:
-            color = self.notification.get_color()
-            Color(*color)
-            self.bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(10)])
-            
-            # För mörk kant
-            Color(color[0]*0.8, color[1]*0.8, color[2]*0.8, color[3])
-            self.border = RoundedRectangle(
-                pos=self.pos, 
-                size=self.size, 
-                radius=[dp(10)],
-                # 1dp kant
-                source=''  # Tom källa för att bara få färg
-            )
-        
-        # Uppdatera bakgrunden när vår position ändras
-        self.bind(pos=self._update_rect, size=self._update_rect)
-    
-    def _update_rect(self, *args):
-        """Uppdaterar bakgrundens position och storlek"""
-        if hasattr(self, 'bg'):
-            self.bg.pos = self.pos
-            self.bg.size = self.size
-        if hasattr(self, 'border'):
-            self.border.pos = self.pos
-            self.border.size = self.size
     
     def _animate_in(self):
         """Animerar in notifikationen från höger"""

@@ -3,21 +3,22 @@ Grafkomponent för att visa temperaturhistorik
 """
 
 from kivy_garden.graph import Graph, MeshLinePlot
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.label import MDLabel
 from kivy.metrics import dp
+from kivy.graphics import Color
 from datetime import datetime
 from data.temperature_history import TemperatureHistory
 
-class TemperatureGraph(BoxLayout):
+class TemperatureGraph(MDBoxLayout):
     """
     Återanvändbar komponent för att visa temperaturhistorik som en graf
     """
     
     def __init__(self, **kwargs):
         super(TemperatureGraph, self).__init__(orientation='vertical', 
-                                               spacing=dp(5), 
-                                               **kwargs)
+                                           spacing=dp(5), 
+                                           **kwargs)
         
         # Sensorn som visas
         self.sensor_name = None
@@ -25,7 +26,7 @@ class TemperatureGraph(BoxLayout):
         # Status-färg för linjen
         self.status_color = [0, 1, 0, 1]  # Standard: grön
         
-        # Skapa graf-widget
+        # Skapa graf-widget med explicit färg för etiketter
         self.graph = Graph(
             xlabel='Tid',
             ylabel='°C',
@@ -41,7 +42,11 @@ class TemperatureGraph(BoxLayout):
             xmax=19,  # För 20 punkter (0-19)
             ymin=70,
             ymax=90,
-            size_hint=(1, 0.85)
+            size_hint=(1, 0.85),
+            label_options={
+                'color': [0.8, 0.8, 0.8, 1],  # Ljusgrå etiketter
+                'bold': True
+            }
         )
         
         # Skapa linjeplotten
@@ -51,12 +56,14 @@ class TemperatureGraph(BoxLayout):
         # Lägg till grafen till layouten
         self.add_widget(self.graph)
         
-        # Skapa statistik-label
-        self.stats_label = Label(
+        # Skapa statistik-label med MDLabel
+        self.stats_label = MDLabel(
             text="Statistik:  Min: --  Max: --  Medel: --",
-            font_size=dp(14),
+            font_style="Body",
             size_hint=(1, 0.15),
-            halign='center'
+            halign='center',
+            theme_text_color="Custom",  # Använd anpassad färg istället för temats
+            text_color=[0.8, 0.8, 0.8, 1]  # Ljusgrå textfärg
         )
         self.stats_label.bind(size=lambda *args: setattr(self.stats_label, 'text_size', (self.stats_label.width, None)))
         
