@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/Users/kharo/.platformio/packages/framework-arduinoespressif32/**",
+                "C:/Users/kharo/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/**",
+                "C:/Users/kharo/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/**",
+                "C:/Users/kharo/.platformio/packages/framework-arduinoespressif32/cores/esp32/**",
+                "C:/Users/kharo/.platformio/packages/framework-arduinoespressif32/variants/esp32/**",
+                "C:/Users/kharo/.platformio/packages/framework-arduinoespressif32/libraries/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "ARDUINO=100"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}
