@@ -7,7 +7,7 @@
 enum LEDColor {
   LED_BLUE,    // Uppvärmning
   LED_GREEN,   // Optimal temperatur
-  LED_YELLOW,  // Varningstemperatur
+  LED_YELLOW,  // Varningstemperatur (orange/gul)
   LED_RED      // För hög temperatur
 };
 
@@ -17,7 +17,7 @@ private:
   float blueMaxTemp;    // Blå upp till detta värde
   float greenMaxTemp;   // Grön upp till detta värde
   float yellowMaxTemp;  // Gul upp till detta värde
-                       // Röd över yellowMaxTemp
+                        // Röd över yellowMaxTemp
   
   // LED-pins
   int redPin;
@@ -33,14 +33,14 @@ private:
 public:
   // Konstruktor
   TemperatureIndicator(int redPin, int greenPin, int bluePin, bool isCommonAnode = false) : 
-    redPin(redPin), 
-    greenPin(greenPin), 
+    redPin(redPin),
+    greenPin(greenPin),
     bluePin(bluePin),
     isCommonAnode(isCommonAnode),
     currentColor(LED_BLUE),
-    blueMaxTemp(70.0),    // Standard: Blå upp till 70°C
-    greenMaxTemp(78.0),   // Standard: Grön 70-78°C
-    yellowMaxTemp(85.0)   // Standard: Gul 78-85°C, Röd över 85°C
+    blueMaxTemp(50.0),    // Standard: Blå upp till 50°C
+    greenMaxTemp(70.0),   // Standard: Grön 50-70°C
+    yellowMaxTemp(80.0)   // Standard: Gul 70-80°C, Röd över 80°C
   {
     // Konfigurera pins
     pinMode(redPin, OUTPUT);
@@ -75,34 +75,35 @@ public:
   void setColor(LEDColor color) {
     currentColor = color;
     
-    // Standardvärden för common cathode (0 = av, 1 = på)
+    // Använd PWM-värden (0-255) för bättre färgkontroll
     int r = 0, g = 0, b = 0;
     
     switch (color) {
-      case LED_BLUE:
-        r = 0; g = 0; b = 1;
-        break;
-      case LED_GREEN:
-        r = 0; g = 1; b = 0;
-        break;
-      case LED_YELLOW:
-        r = 1; g = 1; b = 0;
-        break;
-      case LED_RED:
-        r = 1; g = 0; b = 0;
-        break;
+    case LED_BLUE:
+      r = 0; g = 0; b = 255;        // Ren blå
+      break;
+    case LED_GREEN:
+      r = 0; g = 255; b = 0;        // Ren grön
+      break;
+    case LED_YELLOW:
+      r = 255; g = 40; b = 0;       // Orange/gul (din inställning)
+      break;
+    case LED_RED:
+      r = 255; g = 0; b = 0;        // Ren röd
+      break;
     }
     
-    // Invertera värden för common anode (1 = av, 0 = på)
+    // Invertera för common anode
     if (isCommonAnode) {
-      r = !r;
-      g = !g;
-      b = !b;
+      r = 255 - r;
+      g = 255 - g;
+      b = 255 - b;
     }
     
-    digitalWrite(redPin, r);
-    digitalWrite(greenPin, g);
-    digitalWrite(bluePin, b);
+    // Använd analogWrite för PWM
+    analogWrite(redPin, r);
+    analogWrite(greenPin, g);
+    analogWrite(bluePin, b);
   }
   
   // Hämta aktuell LED-färg

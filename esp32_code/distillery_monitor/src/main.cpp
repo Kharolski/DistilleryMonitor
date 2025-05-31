@@ -3,16 +3,17 @@
 #include "WiFiManager.h"
 #include "TemperatureSensor.h"
 #include "TemperatureIndicator.h"
+#include "TemperatureIndicatorManager.h"
 #include "WebInterface.h"
 
 // Skapa WiFiManager
 WiFiManager wifiManager;
 
-// Skapa temperatursensor
+// Skapa temperatursensor (kan nu hantera flera sensorer)
 TemperatureSensor tempSensor;
 
-// Skapa temperaturindikator för LED
-TemperatureIndicator tempIndicator(TEMP_LED_RED_PIN, TEMP_LED_GREEN_PIN, TEMP_LED_BLUE_PIN);
+// Skapa temperaturindikator-manager
+TemperatureIndicatorManager indicatorManager;
 
 // Skapa webbgränssnitt
 WebInterface webInterface;
@@ -38,11 +39,18 @@ void setup() {
   // Konfigurera knapp
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   
+  // Lägg till indikatorer i managern
+  indicatorManager.addIndicator(TEMP_LED_RED_PIN, TEMP_LED_GREEN_PIN, TEMP_LED_BLUE_PIN);
+  indicatorManager.addIndicator(TEMP2_LED_RED_PIN, TEMP2_LED_GREEN_PIN, TEMP2_LED_BLUE_PIN);
+  indicatorManager.addIndicator(TEMP3_LED_RED_PIN, TEMP3_LED_GREEN_PIN, TEMP3_LED_BLUE_PIN);
+  
   // Initialisera temperatursensor
   if (tempSensor.begin()) {
-    Serial.println("Temperature sensor initialized");
+    Serial.print("Temperature sensors initialized: ");
+    Serial.print(tempSensor.getSensorCount());
+    Serial.println(" sensors found");
   } else {
-    Serial.println("Failed to initialize temperature sensor");
+    Serial.println("Failed to initialize temperature sensors");
   }
   
   // Starta WiFiManager
@@ -50,8 +58,8 @@ void setup() {
   
   // Om ansluten till WiFi, starta webbservern
   if (connected) {
-    // Starta webbgränssnittet
-    webInterface.begin(&wifiManager, &tempSensor, &tempIndicator);
+    // Starta webbgränssnittet med hela manager-objektet
+    webInterface.begin(&wifiManager, &tempSensor, &indicatorManager);
     Serial.println("Web interface started");
     
     // Ställ in WiFi-status LED till grön (ansluten och redo)
@@ -112,17 +120,18 @@ void loop() {
   // Läs temperatur periodiskt (var 4:e sekund)
   static unsigned long lastTempReadTime = 0;
   if (millis() - lastTempReadTime > 4000) {
-    float temperature = tempSensor.readTemperature();
+    // Läs alla temperaturer
+    tempSensor.readAllTemperatures();
     
-    if (tempSensor.isSensorFound()) {
-      Serial.print("Temperature: ");
-      Serial.print(temperature);
-      Serial.println(" °C");
-      
-      // Uppdatera LED baserat på temperatur
-      tempIndicator.updateLED(temperature);
-    } else {
-      Serial.println("Temperature sensor not found");
+    // Uppdatera alla indikatorer baserat på temperaturer
+    int sensorCount = tempSensor.getSensorCount();
+    for (int i = 0; i < sensorCount; i++) {
+      if (tempSensor.isSensorFound(i)) {
+        float temperature = tempSensor.getLastTemperature(i);
+        
+        // Uppdatera motsvarande indikator
+        indicatorManager.updateIndicator(i, temperature);
+      }
     }
     
     lastTempReadTime = millis();
