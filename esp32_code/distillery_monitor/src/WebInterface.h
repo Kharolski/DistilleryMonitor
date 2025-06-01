@@ -2,6 +2,8 @@
 #define WEB_INTERFACE_H
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include "ApiHandler.h"
 #include <WebServer.h>
 #include "WiFiManager.h"
 #include "TemperatureSensor.h"
@@ -11,6 +13,7 @@
 class WebInterface {
 private:
   WebServer server;
+  ApiHandler* apiHandler;
   WiFiManager* wifiManager;
   TemperatureSensor* tempSensor;
   TemperatureIndicatorManager* indicatorManager;
@@ -20,6 +23,14 @@ public:
     wifiManager = nullptr;
     tempSensor = nullptr;
     indicatorManager = nullptr;
+    apiHandler = nullptr;
+  }
+
+  // Destructor för att rensa upp minne
+  ~WebInterface() {
+    if (apiHandler) {
+      delete apiHandler;
+    }
   }
 
   void begin(WiFiManager* wm, TemperatureSensor* ts, TemperatureIndicatorManager* im) {
@@ -27,18 +38,63 @@ public:
     tempSensor = ts;
     indicatorManager = im;
     
-    // Konfigurera webbserver
+    // Skapa API handler
+    apiHandler = new ApiHandler(ts, im);
+    
+    // Befintliga webbserver routes
     server.on("/", [this]() { this->handleRoot(); });
     server.on("/refresh", [this]() { this->handleRefresh(); });
     server.on("/config", [this]() { this->handleConfig(); });
     server.on("/reset", [this]() { this->handleReset(); });
     server.on("/set-temp-ranges", [this]() { this->handleSetTempRanges(); });
     server.on("/favicon.ico", [this]() { this->handleFavicon(); });
+    
+    // NYA API ROUTES
+    server.on("/api/temperatures", HTTP_GET, [this]() {
+      String json = apiHandler->getTemperaturesJson();
+      server.sendHeader("Access-Control-Allow-Origin", "*");
+      server.sendHeader("Content-Type", "application/json");
+      server.send(200, "application/json", json);
+    });
+
+    server.on("/api/config", HTTP_GET, [this]() {
+      String json = apiHandler->getConfigJson();
+      server.sendHeader("Access-Control-Allow-Origin", "*");
+      server.sendHeader("Content-Type", "application/json");
+      server.send(200, "application/json", json);
+    });
+
+    server.on("/api/config", HTTP_POST, [this]() {
+      if (server.hasArg("plain")) {
+        String body = server.arg("plain");
+        bool success = apiHandler->updateConfig(body);
+        
+        server.sendHeader("Access-Control-Allow-Origin", "*");
+        server.sendHeader("Content-Type", "application/json");
+        
+        if (success) {
+          server.send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+          server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON\"}");
+        }
+      } else {
+        server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"No body\"}");
+      }
+    });
+
+    // CORS preflight för POST requests
+    server.on("/api/config", HTTP_OPTIONS, [this]() {
+      server.sendHeader("Access-Control-Allow-Origin", "*");
+      server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+      server.send(200);
+    });
+    
     server.onNotFound([this]() { this->handleNotFound(); });
     
     // Starta webbservern
     server.begin();
-    Serial.println("Web server started");
+    Serial.println("Web server started with API endpoints");
   }
 
   void handleClient() {

@@ -35,7 +35,6 @@ public:
       Serial.println("Maximum number of indicators reached");
       return false;
     }
-
     indicators[indicatorCount] = new TemperatureIndicator(redPin, greenPin, bluePin, isCommonAnode);
     indicatorCount++;
     
@@ -88,6 +87,46 @@ public:
       if (indicators[i] != nullptr) {
         indicators[i]->setTemperatureRanges(blueMax, greenMax, yellowMax);
       }
+    }
+  }
+
+  // *** NYA METODER FÖR API HANDLER ***
+  
+  // Hämta temperaturlimiter
+  float getBlueLimit(int index) {
+    TemperatureIndicator* indicator = getIndicator(index);
+    return indicator ? indicator->getBlueMaxTemp() : 0.0;
+  }
+
+  float getGreenLimit(int index) {
+    TemperatureIndicator* indicator = getIndicator(index);
+    return indicator ? indicator->getGreenMaxTemp() : 0.0;
+  }
+
+  float getYellowLimit(int index) {
+    TemperatureIndicator* indicator = getIndicator(index);
+    return indicator ? indicator->getYellowMaxTemp() : 0.0;
+  }
+
+  // Sätt individuella temperaturlimiter
+  void setBlueLimit(int index, float value) {
+    TemperatureIndicator* indicator = getIndicator(index);
+    if (indicator) {
+      indicator->setTemperatureRanges(value, getGreenLimit(index), getYellowLimit(index));
+    }
+  }
+
+  void setGreenLimit(int index, float value) {
+    TemperatureIndicator* indicator = getIndicator(index);
+    if (indicator) {
+      indicator->setTemperatureRanges(getBlueLimit(index), value, getYellowLimit(index));
+    }
+  }
+
+  void setYellowLimit(int index, float value) {
+    TemperatureIndicator* indicator = getIndicator(index);
+    if (indicator) {
+      indicator->setTemperatureRanges(getBlueLimit(index), getGreenLimit(index), value);
     }
   }
 };
