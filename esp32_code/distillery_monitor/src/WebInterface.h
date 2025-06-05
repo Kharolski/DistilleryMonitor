@@ -26,6 +26,11 @@ public:
     apiHandler = nullptr;
   }
 
+  void stop() {
+        server.stop();
+        Serial.println("Web server stopped");
+    }
+
   // Destructor för att rensa upp minne
   ~WebInterface() {
     if (apiHandler) {

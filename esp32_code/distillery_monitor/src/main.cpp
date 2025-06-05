@@ -5,24 +5,67 @@
 #include "TemperatureIndicator.h"
 #include "TemperatureIndicatorManager.h"
 #include "WebInterface.h"
+#include "DisplayManager.h"
 
-// Skapa WiFiManager
+// Skapa objekt
 WiFiManager wifiManager;
-
-// Skapa temperatursensor (kan nu hantera flera sensorer)
 TemperatureSensor tempSensor;
-
-// Skapa temperaturindikator-manager
 TemperatureIndicatorManager indicatorManager;
-
-// Skapa webbgränssnitt
 WebInterface webInterface;
+DisplayManager displayManager;
 
-// Funktion för att ställa in WiFi-status LED-färg
-void setWifiLedColor(int red, int green, int blue) {
-  digitalWrite(LED_RED_PIN, red);
-  digitalWrite(LED_GREEN_PIN, green);
-  digitalWrite(LED_BLUE_PIN, blue);
+// Display-hantering variabler
+static unsigned long lastDisplayUpdate = 0;
+static unsigned long ipShowStartTime = 0;
+static bool showingIPAfterConnect = false;
+
+// Global variabel för att tvinga AP-läge
+static bool forceConfigMode = false;
+
+// Knapp-hantering
+void handleButtonPress() {
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    delay(BUTTON_DEBOUNCE_MS);
+    
+    if (digitalRead(BUTTON_PIN) == LOW) {
+      unsigned long pressStart = millis();
+      
+      // Vänta på släpp eller långt tryck
+      while (digitalRead(BUTTON_PIN) == LOW) {
+        if (millis() - pressStart > LONG_PRESS_MS) {
+          // LÅNGT TRYCK = Config-läge (UTAN omstart!)
+          Serial.println("Long press - Starting config mode");
+          
+          // Stäng av webserver först
+          webInterface.stop();
+          
+          // Starta config portal direkt
+          forceConfigMode = true;
+          wifiManager.startConfigPortal();
+          
+          // Visa config IP på display
+          displayManager.showIPAddress(wifiManager.getIP(), true);
+          displayManager.setMode(IP_MODE);
+          
+          Serial.println("Config mode started - AP IP: " + wifiManager.getIP().toString());
+          return;
+        }
+        delay(10);
+      }
+      
+      // KORT TRYCK = Toggle display mode (bara om inte i config-läge)
+      if (!forceConfigMode && !wifiManager.isAPMode()) {
+        DisplayMode currentMode = displayManager.getCurrentMode();
+        if (currentMode == IP_MODE) {
+          displayManager.setMode(TEMP_MODE);
+          Serial.println("Switched to temperature mode");
+        } else if (currentMode == TEMP_MODE) {
+          displayManager.setMode(IP_MODE);
+          Serial.println("Switched to IP mode");
+        }
+      }
+    }
+  }
 }
 
 void setup() {
@@ -31,15 +74,18 @@ void setup() {
   delay(1000);
   Serial.println("\n\nStarting Distillation Monitor");
   
-  // Konfigurera WiFi-status RGB LED-pins
-  pinMode(LED_RED_PIN, OUTPUT);
-  pinMode(LED_GREEN_PIN, OUTPUT);
-  pinMode(LED_BLUE_PIN, OUTPUT);
+  // Initiera OLED display
+  if (displayManager.begin()) {
+    displayManager.showStartupScreen();
+    delay(2000);  // Visa startup i 2 sekunder
+  } else {
+    Serial.println("Display initialization failed!");
+  }
   
-  // Konfigurera knapp
+  // Konfigurera knapp (WiFiManager hanterar sina egna LED-pins)
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   
-  // Lägg till indikatorer i managern
+  // Lägg till indikatorer
   indicatorManager.addIndicator(TEMP_LED_RED_PIN, TEMP_LED_GREEN_PIN, TEMP_LED_BLUE_PIN);
   indicatorManager.addIndicator(TEMP2_LED_RED_PIN, TEMP2_LED_GREEN_PIN, TEMP2_LED_BLUE_PIN);
   indicatorManager.addIndicator(TEMP3_LED_RED_PIN, TEMP3_LED_GREEN_PIN, TEMP3_LED_BLUE_PIN);
@@ -53,83 +99,87 @@ void setup() {
     Serial.println("Failed to initialize temperature sensors");
   }
   
-  // Starta WiFiManager
+  // Starta WiFiManager (hanterar sina egna LED-färger)
   bool connected = wifiManager.begin();
   
-  // Om ansluten till WiFi, starta webbservern
-  if (connected) {
-    // Starta webbgränssnittet med hela manager-objektet
+  if (connected && !forceConfigMode) {
+    // Normal anslutning - visa IP och starta webserver
+    IPAddress ip = wifiManager.getIP();
+    displayManager.showIPAddress(ip, false);
+    displayManager.setMode(IP_MODE);
+    
     webInterface.begin(&wifiManager, &tempSensor, &indicatorManager);
     Serial.println("Web interface started");
-    
-    // Ställ in WiFi-status LED till grön (ansluten och redo)
-    setWifiLedColor(0, 1, 0);
+  } else {
+    // AP-läge (antingen första gången eller tvingad av knapp)
+    displayManager.showIPAddress(wifiManager.getIP(), true);
+    displayManager.setMode(IP_MODE);
   }
 }
 
 void loop() {
+  // Hantera knapp
+  handleButtonPress();
+  
   // Hantera WiFiManager
   wifiManager.process();
   
-  // Om i AP-läge, hantera endast WiFiManager
-  if (wifiManager.isAPMode()) {
-    return;
+  // AP-läge (config), visa bara config info
+  if (wifiManager.isAPMode() || forceConfigMode) {
+    if (millis() - lastDisplayUpdate > 1000) {
+      displayManager.showIPAddress(wifiManager.getIP(), true);
+      lastDisplayUpdate = millis();
+    }
+    
+    // Kontrollera om config är klar
+    if (forceConfigMode && wifiManager.isConnected()) {
+      // Config klar - starta webserver och återgå till normal drift
+      forceConfigMode = false;
+      webInterface.begin(&wifiManager, &tempSensor, &indicatorManager);
+      displayManager.setMode(IP_MODE);
+      Serial.println("Config completed - returning to normal mode");
+    }
+    
+    return;  // Hoppa över resten av loop när i config-läge
   }
   
   // Hantera webbgränssnitt
   webInterface.handleClient();
   
-  // Kontrollera WiFi-status
-  if (!wifiManager.isConnected()) {
-    // Om frånkopplad, blinka rött
-    static unsigned long lastBlinkTime = 0;
-    static bool ledState = false;
+  // Smart display-logik
+  if (wifiManager.isConnected()) {
+    DisplayMode currentMode = displayManager.getCurrentMode();
     
-    if (millis() - lastBlinkTime > 500) {
-      ledState = !ledState;
-      setWifiLedColor(ledState, 0, 0);
-      lastBlinkTime = millis();
-    }
-  }
-  
-  // Kontrollera knapp för långt tryck (för att gå in i konfigurationsläge)
-  if (digitalRead(BUTTON_PIN) == LOW) {
-    // Knapp tryckt - vänta på debounce
-    delay(BUTTON_DEBOUNCE_MS);
-    
-    // Om fortfarande tryckt efter debounce
-    if (digitalRead(BUTTON_PIN) == LOW) {
-      // Kontrollera för långt tryck
-      unsigned long pressStartTime = millis();
-      
-      while (digitalRead(BUTTON_PIN) == LOW) {
-        delay(10);
-        
-        // Om knappen hålls tillräckligt länge, starta konfigurationsläge
-        if (millis() - pressStartTime > LONG_PRESS_MS) {
-          Serial.println("Long button press detected - starting config mode");
-          setWifiLedColor(1, 0, 1);  // Lila för konfigurationsläge
-          wifiManager.startConfigPortal();
-          ESP.restart();  // Starta om för att aktivera AP-läge
-          return;
-        }
+    if (currentMode == IP_MODE) {
+      // Visa IP-läge
+      if (millis() - lastDisplayUpdate > 1000) {
+        displayManager.showIPAddress(wifiManager.getIP(), false);
+        lastDisplayUpdate = millis();
+      }
+    } else if (currentMode == TEMP_MODE) {
+      // Visa temperatur-läge
+      if (millis() - lastDisplayUpdate > 2000) {  // Uppdatera var 2:a sekund
+        displayManager.showTemperatureStatus(&tempSensor, &indicatorManager, true);
+        lastDisplayUpdate = millis();
       }
     }
+  } else {
+    // Visa startup-skärm vid frånkoppling
+    if (millis() - lastDisplayUpdate > 1000) {
+      displayManager.showStartupScreen();
+      lastDisplayUpdate = millis();
+    }
   }
   
-  // Läs temperatur periodiskt (var 4:e sekund)
+  // Läs temperaturer var 4:e sekund
   static unsigned long lastTempReadTime = 0;
   if (millis() - lastTempReadTime > 4000) {
-    // Läs alla temperaturer
     tempSensor.readAllTemperatures();
     
-    // Uppdatera alla indikatorer baserat på temperaturer
     int sensorCount = tempSensor.getSensorCount();
     for (int i = 0; i < sensorCount; i++) {
       if (tempSensor.isSensorFound(i)) {
         float temperature = tempSensor.getLastTemperature(i);
-        
-        // Uppdatera motsvarande indikator
         indicatorManager.updateIndicator(i, temperature);
       }
     }

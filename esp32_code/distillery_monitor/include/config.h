@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Pindefinitioner för RGB-LED
+// Pindefinitioner för RGB-LED (WiFi status)
 #define LED_RED_PIN 25     // Röd kanal på RGB-LED
 #define LED_GREEN_PIN 26   // Grön kanal på RGB-LED
 #define LED_BLUE_PIN 27    // Blå kanal på RGB-LED
@@ -15,20 +15,27 @@
 // Bakåtkompatibilitet (kan tas bort senare)
 #define TEMP_SENSOR_PIN 4     // Gamla definitionen
 
-// #1 rgb led för temperatursensor
+// RGB LED #1 för temperatursensor (Kolv)
 #define TEMP_LED_RED_PIN 12    // GPIO pin för röd LED (temperatur)
 #define TEMP_LED_GREEN_PIN 13  // GPIO pin för grön LED (temperatur)
 #define TEMP_LED_BLUE_PIN 14   // GPIO pin för blå LED (temperatur)
 
-// #2 rgb led för temperatursensor 
+// RGB LED #2 för temperatursensor (Destillat)
 #define TEMP2_LED_RED_PIN 16    // GPIO pin för röd LED (temperatur)
 #define TEMP2_LED_GREEN_PIN 17  // GPIO pin för grön LED (temperatur)
 #define TEMP2_LED_BLUE_PIN 18   // GPIO pin för blå LED (temperatur)
 
-// #3 rgb led för temperatursensor
+// RGB LED #3 för temperatursensor (Kylare) - FLYTTADE PINS!
 #define TEMP3_LED_RED_PIN 19    // GPIO pin för röd LED (temperatur)
-#define TEMP3_LED_GREEN_PIN 21  // GPIO pin för grön LED (temperatur)
-#define TEMP3_LED_BLUE_PIN 22   // GPIO pin för blå LED (temperatur)
+#define TEMP3_LED_GREEN_PIN 23  // GPIO pin för grön LED (temperatur) - ÄNDRAD!
+#define TEMP3_LED_BLUE_PIN 32   // GPIO pin för blå LED (temperatur) - ÄNDRAD!
+
+// OLED Display I2C
+#define OLED_SDA_PIN 21        // I2C Data pin
+#define OLED_SCL_PIN 22        // I2C Clock pin
+#define OLED_WIDTH 128         // OLED display width
+#define OLED_HEIGHT 64         // OLED display height
+#define OLED_ADDRESS 0x3C      // I2C address för OLED
 
 // AP-inställningar (när i konfigurationsläge)
 #define AP_NAME "DestillationMonitor"
